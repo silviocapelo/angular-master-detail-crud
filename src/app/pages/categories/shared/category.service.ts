@@ -45,12 +45,14 @@ export class CategoryService {
       map(this.jsonDataToCategory)
     );
   }
+
   create(category: Category): Observable<Category> {
     return this.http.post(this.apiPath, category).pipe(
       catchError( this.handleError),
       map(this.jsonDataToCategory)
     );
   }
+
   update(category: Category): Observable<Category> {
     const url = `${ this.apiPath}/${category.id}`;
     return this.http.put(this.apiPath, category).pipe(
