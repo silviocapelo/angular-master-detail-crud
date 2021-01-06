@@ -4,22 +4,24 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { map, catchError, flatMap } from 'rxjs/operators';
 
+import { CategoryService } from '../../categories/shared/category.service';
+
 import { Entry } from './entry.model';
 
 @Injectable({
   providedIn: 'root'
 })
-export class CategoryService {
+export class EntryService {
 
   private apiPath = 'api/entries';
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private categoryService: CategoryService) { }
 
 
   getAll(): Observable<Entry[]> {
     return this.http.get(this.apiPath).pipe(
       catchError(this.handleError),
-      map(this.jsonDataToCategories)
+      map(this.jsonDataToEntries)
     );
   }
 
@@ -28,23 +30,35 @@ export class CategoryService {
 
     return this.http.get(url).pipe(
       catchError(this.handleError),
-      map(this.jsonDataToCategory)
+      map(this.jsonDataToEntry)
     );
   }
 
   create(entry: Entry): Observable<Entry> {
-    return this.http.post(this.apiPath, entry).pipe(
-      catchError(this.handleError),
-      map(this.jsonDataToCategory)
+    return this.categoryService.getById(entry.categoryId).pipe(
+      flatMap(category => {
+        entry.category = category;
+
+        return this.http.post(this.apiPath, entry).pipe(
+          catchError(this.handleError),
+          map(this.jsonDataToEntry)
+        );
+      })
     );
   }
 
   update(entry: Entry): Observable<Entry> {
     const url = `${this.apiPath}/${entry.id}`;
 
-    return this.http.put(url, entry).pipe(
-      catchError(this.handleError),
-      map(() => entry)
+    return this.categoryService.getById(entry.categoryId).pipe(
+      flatMap(category => {
+        entry.category = category;
+
+        return this.http.put(url, entry).pipe(
+          catchError(this.handleError),
+          map(() => entry)
+        );
+      })
     );
   }
 
@@ -61,14 +75,19 @@ export class CategoryService {
 
   // PRIVATE METHODS
 
-  private jsonDataToCategories(jsonData: any[]): Entry[] {
+  private jsonDataToEntries(jsonData: any[]): Entry[] {
     const entries: Entry[] = [];
-    jsonData.forEach(element => entries.push(element as Entry));
+
+    jsonData.forEach(element => {
+      const entry = Object.assign(new Entry(), element);
+      entries.push(entry);
+    });
+
     return entries;
   }
 
-  private jsonDataToCategory(jsonData: any): Entry {
-    return jsonData as Entry;
+  private jsonDataToEntry(jsonData: any): Entry {
+    return Object.assign(new Entry(), jsonData);
   }
 
   private handleError(error: any): Observable<any> {
